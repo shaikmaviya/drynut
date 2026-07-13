@@ -17,53 +17,7 @@ const HIGHLIGHTS = [
 ]
 
 // Keep reviews empty until real customer feedback is available.
-const REVIEWS = [
-  {
-    name: "Momo",
-    stars: 5,
-    text: "Fresh, tasty, and premium quality. Loved it!"
-  },
-  {
-    name: "Priya",
-    stars: 5,
-    text: "Perfect snack for work and travel. Highly recommended."
-  },
-  {
-    name: "Rahul",
-    stars: 5,
-    text: "Great mix of dry fruits. Very fresh and crunchy."
-  },
-  {
-    name: "Aisha",
-    stars: 4,
-    text: "Healthy and delicious. Will order again."
-  },
-  {
-    name: "Arjun",
-    stars: 5,
-    text: "Excellent quality at a good price."
-  },
-  {
-    name: "Sneha",
-    stars: 5,
-    text: "My family loved the taste. Very fresh."
-  },
-  {
-    name: "Rohan",
-    stars: 5,
-    text: "Best dry fruits mix I've tried so far."
-  },
-  {
-    name: "Neha",
-    stars: 4,
-    text: "Good packaging and premium quality."
-  },
-  {
-    name: "Imran",
-    stars: 5,
-    text: "Fresh, natural, and worth every rupee."
-  }
-];
+const REVIEWS = []
 
 const productImageModules = import.meta.glob('./product-images/*.{png,jpg,jpeg,webp,avif}', { eager: true })
 const PRODUCT_IMAGES = Object.entries(productImageModules)
@@ -86,6 +40,8 @@ export default function App() {
   const [applyingCoupon, setApplyingCoupon] = useState(false)
   const [tracking, setTracking] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [errorModal, setErrorModal] = useState(null) // string message or null
+  const [errorModalMessage, setErrorModalMessage] = useState(null)
 
   const subtotal = quantity * PRICE_PER_PACK
   const discountRupees = couponStatus && couponStatus.valid ? couponStatus.discountInPaise / 100 : 0
@@ -174,14 +130,17 @@ export default function App() {
               setShowSuccessModal(true)
             } else {
               setStatus({ type: 'error', message: 'Payment could not be verified. Contact support.' })
+              setErrorModal('We could not verify your payment. If money was deducted, please contact support with your phone number.')
             }
           } catch {
             setStatus({ type: 'error', message: 'Payment went through but verification failed. Contact support.' })
+            setErrorModal('Your payment went through but verification failed on our end. Please contact support with your phone number.')
           }
         },
         modal: {
           ondismiss: function () {
             setStatus({ type: 'error', message: 'Payment cancelled.' })
+            setErrorModal('Payment was cancelled. No amount has been charged.')
           },
         },
       }
@@ -190,6 +149,7 @@ export default function App() {
       rzp.open()
     } catch (err) {
       setStatus({ type: 'error', message: err.message || 'Something went wrong.' })
+      setErrorModal(err.message || 'Something went wrong while starting your order. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -291,6 +251,12 @@ export default function App() {
               <span className="spec-label">Per pack</span>
             </div>
           </div>
+
+          <ul className="ingredients">
+            {INGREDIENTS.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
         </aside>
       </section>
 
@@ -441,6 +407,25 @@ export default function App() {
             </p>
             <button className="cta success-close-btn" onClick={() => setShowSuccessModal(false)}>
               Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {errorModal && (
+        <div className="success-backdrop" onClick={() => setErrorModal(null)}>
+          <div className="success-card error-card" onClick={(e) => e.stopPropagation()}>
+            <div className="success-tick-wrap">
+              <svg className="success-tick" viewBox="0 0 52 52">
+                <circle className="error-tick-circle" cx="26" cy="26" r="24" fill="none" />
+                <path className="error-tick-cross" fill="none" d="M17 17l18 18" />
+                <path className="error-tick-cross error-tick-cross-2" fill="none" d="M35 17l-18 18" />
+              </svg>
+            </div>
+            <h2 className="success-title">Order not completed</h2>
+            <p className="success-sub">{errorModal}</p>
+            <button className="cta error-close-btn" onClick={() => setErrorModal(null)}>
+              Try again
             </button>
           </div>
         </div>

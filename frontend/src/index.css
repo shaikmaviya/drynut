@@ -16,6 +16,10 @@
 
 * { box-sizing: border-box; }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 html, body, #root {
   min-height: 100%;
 }
@@ -30,6 +34,8 @@ body {
   color: var(--cream);
   font-family: var(--body);
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 #root {
@@ -38,7 +44,7 @@ body {
 
 .wrap {
   width: 100%;
-  max-width: none;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 28px clamp(16px, 4vw, 64px) 0;
 }
@@ -58,6 +64,8 @@ body {
   opacity: 0.35;
 }
 
+/* ---------- Hero ---------- */
+
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
@@ -68,6 +76,7 @@ body {
 
 .hero-panel {
   padding: 10px 0 0;
+  min-width: 0;
 }
 
 .hero-side {
@@ -75,6 +84,7 @@ body {
   gap: 16px;
   position: sticky;
   top: 18px;
+  min-width: 0;
 }
 
 .eyebrow {
@@ -88,15 +98,16 @@ body {
 h1 {
   font-family: var(--display);
   font-weight: 600;
-  font-size: clamp(34px, 6.8vw, 60px);
-  line-height: 1.02;
+  font-size: clamp(32px, 6.8vw, 60px);
+  line-height: 1.05;
   margin: 12px 0 16px;
   color: var(--cream);
   max-width: 12ch;
+  word-break: break-word;
 }
 
 .sub {
-  font-size: 17px;
+  font-size: clamp(15px, 2vw, 17px);
   color: var(--cream-dim);
   max-width: 52ch;
   margin-bottom: 16px;
@@ -115,6 +126,7 @@ h1 {
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--cream);
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .hero-pills span:nth-child(1) {
@@ -132,7 +144,10 @@ h1 {
   border-color: rgba(216, 108, 124, 0.28);
 }
 
+/* ---------- Product photo / slider ---------- */
+
 .product-photo {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 34px;
@@ -159,6 +174,8 @@ h1 {
 
 .slider-btn {
   position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   border-radius: 14px;
@@ -166,30 +183,60 @@ h1 {
   background: rgba(31, 19, 32, 0.72);
   color: var(--cream);
   backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  touch-action: manipulation;
 }
 
 .slider-btn-prev { left: 14px; }
 .slider-btn-next { right: 14px; }
 
 .slider-btn:hover {
-  transform: translateY(-1px);
   background: rgba(31, 19, 32, 0.82);
 }
 
+.slider-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .slider-dots {
+  position: absolute;
+  left: 50%;
   bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
 }
 
 .slider-dot {
   width: 10px;
   height: 10px;
+  padding: 0;
+  border-radius: 50%;
   border: 1px solid rgba(250, 243, 229, 0.35);
   background: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .slider-dot.active {
   background: linear-gradient(135deg, var(--sand), var(--rose));
+  border-color: transparent;
 }
+
+.no-image {
+  padding: 24px;
+  text-align: center;
+}
+
+/* ---------- Spec strip ---------- */
 
 .spec-strip {
   display: grid;
@@ -219,9 +266,10 @@ h1 {
 }
 
 .spec-cell {
-  padding: 18px 12px 16px;
+  padding: 18px 10px 16px;
   text-align: center;
   border-right: 1px solid var(--line);
+  min-width: 0;
 }
 .spec-cell:last-child { border-right: none; }
 
@@ -232,17 +280,19 @@ h1 {
 
 .spec-num {
   font-family: var(--display);
-  font-size: 28px;
+  font-size: clamp(20px, 5vw, 28px);
   color: var(--sand);
   display: block;
 }
 
 .spec-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--cream-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+/* ---------- Ingredients ---------- */
 
 .ingredients {
   display: grid;
@@ -254,13 +304,19 @@ h1 {
 }
 
 .ingredients li {
-  font-size: 15px;
+  font-size: 14px;
   padding: 10px 14px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--cream);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+/* ---------- Section blocks ---------- */
 
 .section-block {
   border-radius: 34px;
@@ -301,6 +357,8 @@ h1 {
   border-color: rgba(240, 217, 168, 0.18);
 }
 
+/* ---------- Order cards ---------- */
+
 .order-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -309,18 +367,24 @@ h1 {
   margin: 24px 0;
   box-shadow: 0 24px 50px rgba(0, 0, 0, 0.18);
   width: 100%;
+  min-width: 0;
 }
 
 .order-card h2 {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 22px;
+  margin: 0 0 20px;
 }
 
 .order-card h2::before {
   content: '';
   width: 10px;
   height: 10px;
+  flex: none;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--sand), var(--rose));
   box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.05);
@@ -332,13 +396,6 @@ h1 {
 
 .order-secondary {
   background: linear-gradient(180deg, rgba(216, 108, 124, 0.18), rgba(255, 255, 255, 0.05));
-}
-
-.order-card h2 {
-  font-family: var(--display);
-  font-weight: 500;
-  font-size: 22px;
-  margin: 0 0 20px;
 }
 
 .field {
@@ -354,13 +411,14 @@ h1 {
 
 .field input {
   width: 100%;
-  padding: 11px 12px;
+  padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0,0,0,0.24);
   color: var(--cream);
-  font-size: 15px;
+  font-size: 16px; /* 16px prevents iOS zoom-on-focus */
   font-family: var(--body);
+  min-height: 46px;
 }
 .field input:focus {
   outline: none;
@@ -375,14 +433,16 @@ h1 {
 }
 
 .qty-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: var(--cream);
   font-size: 18px;
   cursor: pointer;
+  flex: none;
+  touch-action: manipulation;
 }
 
 .total-row {
@@ -392,6 +452,7 @@ h1 {
   margin: 18px 0;
   padding-top: 14px;
   border-top: 1px solid var(--line);
+  gap: 10px;
 }
 
 .total-amount {
@@ -402,7 +463,8 @@ h1 {
 
 .cta {
   width: 100%;
-  padding: 15px;
+  padding: 16px;
+  min-height: 50px;
   border-radius: 18px;
   border: none;
   background: linear-gradient(135deg, var(--sand), var(--amber), var(--rose));
@@ -411,6 +473,7 @@ h1 {
   font-size: 16px;
   cursor: pointer;
   font-family: var(--body);
+  touch-action: manipulation;
 }
 .cta:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -432,7 +495,7 @@ h1 {
 .section-heading {
   font-family: var(--display);
   font-weight: 500;
-  font-size: 24px;
+  font-size: clamp(20px, 4vw, 24px);
   margin: 0 0 16px;
   letter-spacing: -0.02em;
 }
@@ -455,6 +518,7 @@ h1 {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 24px 18px 26px 18px;
   padding: 18px 16px;
+  min-width: 0;
 }
 
 .highlight-card:nth-child(1) {
@@ -493,6 +557,8 @@ h1 {
   color: var(--cream-dim);
   line-height: 1.5;
 }
+
+/* ---------- Reviews ---------- */
 
 .reviews-section {
   margin-bottom: 4px;
@@ -587,12 +653,9 @@ footer {
   width: 100%;
 }
 
-@media (max-width: 640px) {
-  .wrap {
-    padding-inline: 16px;
-    padding-top: 18px;
-  }
-
+/* ---------- Responsive breakpoints ---------- */
+/* Tablet and below: stack hero + order columns */
+@media (max-width: 900px) {
   .hero-grid,
   .order-grid {
     grid-template-columns: 1fr;
@@ -601,23 +664,50 @@ footer {
   .hero-side {
     position: static;
   }
+}
+
+/* Phone: tighten spacing, single-column everywhere, bigger tap targets */
+@media (max-width: 640px) {
+  .wrap {
+    padding-inline: 16px;
+    padding-top: 18px;
+  }
 
   h1 {
     max-width: none;
   }
 
+  .hero-pills {
+    gap: 8px;
+  }
+
+  .hero-pills span {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
   .product-photo {
     aspect-ratio: 4 / 3;
     border-radius: 26px;
+    margin: 18px 0 16px;
+  }
+
+  .slider-btn {
+    width: 36px;
+    height: 36px;
   }
 
   .spec-strip {
     grid-template-columns: 1fr;
+    border-radius: 20px;
+    margin: 18px 0 22px;
   }
 
   .spec-cell {
-    border-right: none;
+    border-right: none !important;
+    border-left: none !important;
     border-bottom: 1px solid var(--line);
+    padding: 14px 10px;
   }
 
   .spec-cell:last-child {
@@ -625,24 +715,211 @@ footer {
   }
 
   .ingredients {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .ingredients li {
+    font-size: 13px;
+    padding: 9px 10px;
   }
 
   .section-block,
   .order-card {
     padding: 18px;
-    border-radius: 24px;
+    border-radius: 22px;
+    margin: 18px 0;
+  }
+
+  .order-card h2 {
+    font-size: 19px;
+    margin-bottom: 16px;
+  }
+
+  .highlights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .review-card {
+    flex: 0 0 220px;
+    padding: 14px 16px;
+  }
+
+  .total-row {
+    flex-wrap: wrap;
+  }
+
+  .cta {
+    font-size: 15px;
   }
 }
 
-@media (max-width: 980px) {
-  .hero-grid,
-  .order-grid {
+/* Very small phones */
+@media (max-width: 380px) {
+  .highlights-grid {
     grid-template-columns: 1fr;
   }
 
-  .hero-side {
-    position: static;
+  .ingredients {
+    grid-template-columns: 1fr;
   }
 }
 
+/* ---------- Order success popup ---------- */
+
+.success-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 20, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+  animation: success-fade-in 0.2s ease;
+}
+
+.success-card {
+  width: 100%;
+  max-width: 340px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  padding: 32px 28px 26px;
+  text-align: center;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+  animation: success-pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.success-tick-wrap {
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 18px;
+}
+
+.success-tick {
+  width: 100%;
+  height: 100%;
+}
+
+.success-tick-circle {
+  stroke: var(--mint);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: success-circle 0.5s ease forwards;
+}
+
+.success-tick-check {
+  stroke: var(--mint);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 36;
+  stroke-dashoffset: 36;
+  animation: success-check 0.35s ease 0.45s forwards;
+}
+
+.success-title {
+  font-family: var(--display);
+  font-size: 24px;
+  color: var(--cream);
+  margin: 0 0 10px;
+}
+
+.success-sub {
+  font-size: 14px;
+  color: var(--cream-dim);
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+
+.success-close-btn {
+  width: auto;
+  padding: 12px 32px;
+  display: inline-block;
+}
+
+@keyframes success-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes success-pop-in {
+  from { opacity: 0; transform: scale(0.9) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes success-circle {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes success-check {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .success-backdrop,
+  .success-card,
+  .success-tick-circle,
+  .success-tick-check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---------- Order failure popup ---------- */
+
+.error-card {
+  animation: success-pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), error-shake 0.4s ease 0.32s;
+}
+
+.error-tick-circle {
+  stroke: var(--rose);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: success-circle 0.5s ease forwards;
+}
+
+.error-tick-cross {
+  stroke: var(--rose);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  animation: success-check 0.3s ease 0.4s forwards;
+}
+
+.error-tick-cross-2 {
+  animation-delay: 0.52s;
+}
+
+.error-close-btn {
+  width: auto;
+  padding: 12px 32px;
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(216, 108, 124, 0.9), rgba(200, 60, 60, 0.85));
+  color: var(--cream);
+}
+
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error-card {
+    animation: none;
+  }
+
+  .error-tick-circle,
+  .error-tick-cross {
+    stroke-dashoffset: 0;
+  }
+}
