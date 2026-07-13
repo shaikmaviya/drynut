@@ -1,0 +1,12 @@
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\config\CorsConfig.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\controller\CouponController.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\controller\OrderController.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\dto\OrderDtos.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\entity\CouponEntity.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\entity\OrderEntity.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\repository\CouponRepository.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\repository\OrderRepository.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\service\CouponService.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\service\EmailService.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\service\RazorpayService.java
+C:\Users\black\Downloads\dryfruit-shop\backend\src\main\java\com\dryfruit\shop\ShopApplication.java
