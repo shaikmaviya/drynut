@@ -8,6 +8,6 @@ const isAdmin = window.location.pathname.startsWith('/admin')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {isAdmin ? <AdminDashboard /> : <App />}
+    {isAdmin ? <Admindashboard /> : <App />}
   </React.StrictMode>,
 )
