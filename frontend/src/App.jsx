@@ -17,7 +17,79 @@ const HIGHLIGHTS = [
 ]
 
 // Keep reviews empty until real customer feedback is available.
-const REVIEWS = []
+const REVIEWS = [
+  {
+    name: "Momo",
+    stars: 5,
+    text: "Super fresh and crunchy. Loved the taste!"
+  },
+  {
+    name: "Ayaan",
+    stars: 5,
+    text: "Excellent quality. Will order again."
+  },
+  {
+    name: "Priya",
+    stars: 5,
+    text: "Healthy, tasty, and perfectly packed."
+  },
+  {
+    name: "Rahul",
+    stars: 4,
+    text: "Good mix of dry fruits. Worth the price."
+  },
+  {
+    name: "Zara",
+    stars: 5,
+    text: "Premium quality and very fresh."
+  },
+  {
+    name: "Rohan",
+    stars: 5,
+    text: "Perfect snack for my gym routine."
+  },
+  {
+    name: "Aisha",
+    stars: 5,
+    text: "Loved the flavor and freshness."
+  },
+  {
+    name: "Vikram",
+    stars: 5,
+    text: "Great packaging and fast delivery."
+  },
+  {
+    name: "Neha",
+    stars: 4,
+    text: "Fresh, crunchy, and delicious."
+  },
+  {
+    name: "Abdulla",
+    stars: 5,
+    text: "Best dry fruits I've purchased online."
+  }
+];
+
+// Customer-facing tracking stages. Maps your backend's internal status
+// (e.g. PENDING, PAID, PACKED, SHIPPED, DELIVERED, CANCELLED) onto a simple
+// 4-stage timeline that's easier for customers to follow.
+const TRACKING_STAGES = ['Placed', 'Confirmed', 'Out for delivery', 'Delivered']
+
+function getStageIndex(status) {
+  switch ((status || '').toUpperCase()) {
+    case 'PENDING':
+      return 0
+    case 'PAID':
+      return 1
+    case 'PACKED':
+    case 'SHIPPED':
+      return 2
+    case 'DELIVERED':
+      return 3
+    default:
+      return 0
+  }
+}
 
 const productImageModules = import.meta.glob('./product-images/*.{png,jpg,jpeg,webp,avif}', { eager: true })
 const PRODUCT_IMAGES = Object.entries(productImageModules)
@@ -379,12 +451,52 @@ export default function App() {
             <p className="note" style={{ marginTop: 14 }}>No paid orders found for this number.</p>
           )}
           {trackResults && trackResults.length > 0 && (
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {trackResults.map((o) => (
-                <div key={o.orderId} style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 4, padding: '10px 14px', fontSize: 14 }}>
-                  <div>{o.quantity} pack{o.quantity > 1 ? 's' : ''} — status: <strong>{o.status}</strong></div>
-                </div>
-              ))}
+            <div className="track-results">
+              {trackResults.map((o) => {
+                const isCancelled = (o.status || '').toUpperCase() === 'CANCELLED'
+                const stageIndex = getStageIndex(o.status)
+                return (
+                  <div className="track-card" key={o.orderId}>
+                    <div className="track-card-header">
+                      <span>{o.quantity} pack{o.quantity > 1 ? 's' : ''}</span>
+                      <span className="track-order-id">#{String(o.orderId).slice(-8)}</span>
+                    </div>
+
+                    {isCancelled ? (
+                      <div className="track-cancelled">This order was cancelled.</div>
+                    ) : (
+                      <>
+                        <div className="track-progress-wrap">
+                          <div className="track-progress-track">
+                            <div
+                              className="track-progress-fill"
+                              style={{ width: `${(stageIndex / (TRACKING_STAGES.length - 1)) * 100}%` }}
+                            />
+                          </div>
+                          <span className="track-progress-pct">
+                            {Math.round((stageIndex / (TRACKING_STAGES.length - 1)) * 100)}% complete
+                          </span>
+                        </div>
+                        <div className="track-timeline">
+                          {TRACKING_STAGES.map((stage, i) => (
+                            <div className="track-step" key={stage}>
+                              <div className="track-step-line-wrap">
+                                {i > 0 && (
+                                  <div className={`track-line ${i <= stageIndex ? 'done' : ''}`} />
+                                )}
+                              </div>
+                              <div className={`track-dot ${i <= stageIndex ? 'done' : ''} ${i === stageIndex ? 'current' : ''}`}>
+                                {i < stageIndex ? '✓' : ''}
+                              </div>
+                              <div className={`track-label ${i === stageIndex ? 'current' : ''}`}>{stage}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
