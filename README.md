@@ -17,7 +17,7 @@ cd backend
 $env:FRONTEND_URL="http://localhost:5173"
 
 $env:MAIL_USERNAME="officialdrynut@gmail.com"
-$env:MAIL_PASSWORD="toyclcdgtxbogrgn"
+
 $env:NOTIFY_EMAIL="officialdrynut@gmail.com"
 mvn spring-boot:run
 ```
