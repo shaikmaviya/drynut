@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 
 // Same backend used by the storefront.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+
+// How often to auto-refresh orders while the dashboard is open (ms).
+const POLL_INTERVAL_MS = 15000
 
 // These match your actual OrderEntity.status values exactly.
 // Note: there is no PENDING/CANCELLED status in your backend - every order
@@ -34,6 +37,8 @@ export default function AdminDashboard() {
 
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(false)
+  const [isPolling, setIsPolling] = useState(false)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [updatingId, setUpdatingId] = useState(null)
 
@@ -41,9 +46,22 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [selectedOrder, setSelectedOrder] = useState(null)
 
-  async function fetchOrders(key) {
-    setLoading(true)
-    setLoadError(null)
+  // Track whether an update is in-flight so a background poll doesn't
+  // clobber an optimistic UI change that hasn't been confirmed yet.
+  const updatingIdRef = useRef(null)
+  useEffect(() => {
+    updatingIdRef.current = updatingId
+  }, [updatingId])
+
+  // silent = true means "background refresh" - don't show the big loading
+  // state or blow away the screen, just quietly swap in fresh data.
+  const fetchOrders = useCallback(async (key, { silent = false } = {}) => {
+    if (silent) {
+      setIsPolling(true)
+    } else {
+      setLoading(true)
+      setLoadError(null)
+    }
     try {
       // Your backend's /api/orders/summary endpoint returns { orders: [...] }
       // along with some aggregate counts, protected by the `key` query param.
@@ -56,18 +74,65 @@ export default function AdminDashboard() {
       }
       if (!res.ok) throw new Error('Could not load orders.')
       const data = await res.json()
-      setOrders(Array.isArray(data.orders) ? data.orders : [])
-    } catch (err) {
-      setLoadError(err.message || 'Something went wrong loading orders.')
-    } finally {
-      setLoading(false)
-    }
-  }
+      const nextOrders = Array.isArray(data.orders) ? data.orders : []
 
+      // If a status update is mid-flight, keep that row's optimistic value
+      // instead of letting a poll overwrite it before the PATCH resolves.
+      const pendingId = updatingIdRef.current
+      if (pendingId != null) {
+        setOrders((current) => {
+          const pendingOrder = current.find((o) => o.orderId === pendingId)
+          return nextOrders.map((o) =>
+            o.orderId === pendingId && pendingOrder ? { ...o, status: pendingOrder.status } : o
+          )
+        })
+      } else {
+        setOrders(nextOrders)
+      }
+      setLastUpdatedAt(new Date())
+      if (!silent) setLoadError(null)
+    } catch (err) {
+      // Don't surface transient background-poll errors as a loud banner;
+      // only report failures from an explicit/foreground load.
+      if (!silent) setLoadError(err.message || 'Something went wrong loading orders.')
+    } finally {
+      if (silent) setIsPolling(false)
+      else setLoading(false)
+    }
+  }, [])
+
+  // Initial load whenever we (re)authenticate.
   useEffect(() => {
     if (adminKey) fetchOrders(adminKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminKey])
+  }, [adminKey, fetchOrders])
+
+  // Background auto-polling while signed in. Pauses when the tab isn't
+  // visible so we're not hammering the backend from a backgrounded tab.
+  useEffect(() => {
+    if (!adminKey) return
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrders(adminKey, { silent: true })
+      }
+    }
+
+    const intervalId = setInterval(tick, POLL_INTERVAL_MS)
+
+    // Also refresh immediately whenever the tab regains focus/visibility,
+    // so switching back to it shows current data right away.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrders(adminKey, { silent: true })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [adminKey, fetchOrders])
 
   function handleLogin() {
     if (!keyInput.trim()) return
@@ -80,6 +145,7 @@ export default function AdminDashboard() {
     localStorage.removeItem('drynut_admin_key')
     setAdminKey('')
     setOrders([])
+    setLastUpdatedAt(null)
   }
 
   async function updateStatus(orderId, newStatus) {
@@ -170,6 +236,14 @@ export default function AdminDashboard() {
           <h1 className="admin-title">Orders</h1>
         </div>
         <div className="admin-header-actions">
+          <div className="admin-live-status">
+            <span className={`admin-live-dot ${isPolling ? 'pulsing' : ''}`} aria-hidden="true" />
+            <span className="admin-live-text">
+              {lastUpdatedAt
+                ? `Updated ${lastUpdatedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                : 'Live'}
+            </span>
+          </div>
           <button className="admin-btn-ghost" onClick={() => fetchOrders(adminKey)} disabled={loading}>
             {loading ? 'Refreshing…' : 'Refresh'}
           </button>
