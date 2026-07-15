@@ -8,6 +8,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 const PRICE_PER_PACK = 29
 const INGREDIENTS = ['Dates', 'Cashews', 'Almonds', 'Peanuts', 'Dried figs', 'Pumpkin seeds']
 
+// Set this to your actual WhatsApp support number (with country code, no + or spaces),
+// e.g. "919876543210" for a +91 98765 43210 number. Leave blank to hide the button.
+const WHATSAPP_SUPPORT_NUMBER = "917780113910"
+
 // Product highlights shown on the page - keep these to claims that are actually true for your product.
 const HIGHLIGHTS = [
   { title: 'Hygienically packed', desc: 'Sealed in a clean, controlled packing process so nothing is handled by hand after packing.' },
@@ -18,70 +22,30 @@ const HIGHLIGHTS = [
 
 // Keep reviews empty until real customer feedback is available.
 const REVIEWS = [
-  {
-    name: "Momo",
-    stars: 5,
-    text: "Super fresh and crunchy. Loved the taste!"
-  },
-  {
-    name: "Ayaan",
-    stars: 5,
-    text: "Excellent quality. Will order again."
-  },
-  {
-    name: "Priya",
-    stars: 5,
-    text: "Healthy, tasty, and perfectly packed."
-  },
-  {
-    name: "Rahul",
-    stars: 4,
-    text: "Good mix of dry fruits. Worth the price."
-  },
-  {
-    name: "Zara",
-    stars: 5,
-    text: "Premium quality and very fresh."
-  },
-  {
-    name: "Rohan",
-    stars: 5,
-    text: "Perfect snack for my gym routine."
-  },
-  {
-    name: "Aisha",
-    stars: 5,
-    text: "Loved the flavor and freshness."
-  },
-  {
-    name: "Vikram",
-    stars: 5,
-    text: "Great packaging and fast delivery."
-  },
-  {
-    name: "Neha",
-    stars: 4,
-    text: "Fresh, crunchy, and delicious."
-  },
-  {
-    name: "Abdulla",
-    stars: 5,
-    text: "Best dry fruits I've purchased online."
-  }
-];
+  { name: "Momo", stars: 5, text: "Super fresh and crunchy. Loved the taste!" },
+  { name: "Ayaan", stars: 5, text: "Excellent quality. Will order again." },
+  { name: "Priya", stars: 5, text: "Healthy, tasty, and perfectly packed." },
+  { name: "Rahul", stars: 4, text: "Good mix of dry fruits. Worth the price." },
+  { name: "Zara", stars: 5, text: "Premium quality and very fresh." },
+  { name: "Rohan", stars: 5, text: "Perfect snack for my gym routine." },
+  { name: "Aisha", stars: 5, text: "Loved the flavor and freshness." },
+  { name: "Vikram", stars: 5, text: "Great packaging and fast delivery." },
+  { name: "Neha", stars: 4, text: "Fresh, crunchy, and delicious." },
+  { name: "Abdulla", stars: 5, text: "Best dry fruits I've purchased online." },
+]
 
-// Customer-facing tracking stages. Maps your backend's internal status
-// (e.g. PENDING, PAID, PACKED, SHIPPED, DELIVERED, CANCELLED) onto a simple
-// 4-stage timeline that's easier for customers to follow.
-const TRACKING_STAGES = ['Placed', 'Confirmed', 'Out for delivery', 'Delivered']
+// Customer-facing tracking stages. Your backend's /api/orders/track endpoint
+// only ever returns orders where paid=true, and OrderEntity.status is one of:
+// CONFIRMED, PACKED, SHIPPED, DELIVERED (there's no PENDING/CANCELLED status -
+// an order that hasn't been paid yet simply never shows up in tracking results).
+const TRACKING_STAGES = ['Confirmed', 'Packed', 'Shipped', 'Delivered']
 
 function getStageIndex(status) {
   switch ((status || '').toUpperCase()) {
-    case 'PENDING':
+    case 'CONFIRMED':
       return 0
-    case 'PAID':
-      return 1
     case 'PACKED':
+      return 1
     case 'SHIPPED':
       return 2
     case 'DELIVERED':
@@ -113,11 +77,50 @@ export default function App() {
   const [tracking, setTracking] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [errorModal, setErrorModal] = useState(null) // string message or null
-  const [errorModalMessage, setErrorModalMessage] = useState(null)
+  const [lastOrderId, setLastOrderId] = useState(null)
+  const [copiedOrderId, setCopiedOrderId] = useState(false)
 
   const subtotal = quantity * PRICE_PER_PACK
   const discountRupees = couponStatus && couponStatus.valid ? couponStatus.discountInPaise / 100 : 0
-  const total = subtotal - discountRupees
+  const total = Math.max(0, subtotal - discountRupees)
+
+  // Simple, real-time validation so people find out about a typo'd phone number
+  // or pincode before they even reach payment, not after.
+  const phoneDigits = phone.replace(/\D/g, '')
+  const pincodeDigits = pincode.replace(/\D/g, '')
+  const phoneError = phone.length > 0 && phoneDigits.length !== 10 ? 'Enter a valid 10 digit mobile number.' : null
+  const pincodeError = pincode.length > 0 && pincodeDigits.length !== 6 ? 'Enter a valid 6 digit pincode.' : null
+
+  // Razorpay rejects orders below ₹1. With coupons this could theoretically push
+  // the total to ₹0 or less, so guard against that before ever hitting checkout.
+  const belowMinimumAmount = total < 1
+
+  function handlePhoneChange(e) {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10)
+    setPhone(digitsOnly)
+  }
+
+  function handlePincodeChange(e) {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setPincode(digitsOnly)
+  }
+
+  function handleTrackPhoneChange(e) {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10)
+    setTrackPhone(digitsOnly)
+  }
+
+  function scrollToOrderSection() {
+    document.getElementById('order-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function copyOrderId() {
+    if (!lastOrderId) return
+    navigator.clipboard?.writeText(lastOrderId).then(() => {
+      setCopiedOrderId(true)
+      setTimeout(() => setCopiedOrderId(false), 2000)
+    })
+  }
 
   function goToPrevSlide() {
     setCurrentSlide((index) => (index === 0 ? PRODUCT_IMAGES.length - 1 : index - 1))
@@ -148,12 +151,17 @@ export default function App() {
 
   async function handleOrder() {
     setStatus(null)
-    if (!name.trim() || phone.trim().length < 10) {
+    if (!name.trim() || phoneDigits.length !== 10) {
       setStatus({ type: 'error', message: 'Enter your name and a valid phone number.' })
       return
     }
-    if (!address.trim() || pincode.trim().length < 6) {
+    if (!address.trim() || pincodeDigits.length !== 6) {
       setStatus({ type: 'error', message: 'Enter your full delivery address and a valid pincode.' })
+      return
+    }
+    if (belowMinimumAmount) {
+      setStatus({ type: 'error', message: 'Order amount is too low. Please increase quantity or remove the coupon.' })
+      setErrorModal('This order total is below the minimum allowed amount. Try increasing the quantity or removing the coupon code.')
       return
     }
     setLoading(true)
@@ -164,9 +172,9 @@ export default function App() {
         body: JSON.stringify({
           quantity,
           customerName: name,
-          customerPhone: phone,
+          customerPhone: phoneDigits,
           address,
-          pincode,
+          pincode: pincodeDigits,
           couponCode: couponStatus && couponStatus.valid ? couponCode.trim() : null,
         }),
       })
@@ -175,6 +183,7 @@ export default function App() {
         throw new Error(err.error || 'Could not start the order. Try again.')
       }
       const order = await res.json()
+      setLastOrderId(order.orderId)
 
       const options = {
         key: order.keyId,
@@ -183,7 +192,7 @@ export default function App() {
         name: 'Drynut',
         description: `${quantity} pack(s) of dry fruit mix`,
         order_id: order.orderId,
-        prefill: { name, contact: phone },
+        prefill: { name, contact: phoneDigits },
         theme: { color: '#D9A441' },
         handler: async function (response) {
           try {
@@ -218,6 +227,14 @@ export default function App() {
       }
 
       const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (response) {
+        setStatus({ type: 'error', message: 'Payment failed. Please try again.' })
+        setErrorModal(
+          response?.error?.description
+            ? `Payment failed: ${response.error.description}`
+            : 'Your payment could not be completed. No amount has been charged. Please try again.'
+        )
+      })
       rzp.open()
     } catch (err) {
       setStatus({ type: 'error', message: err.message || 'Something went wrong.' })
@@ -257,6 +274,9 @@ export default function App() {
             <span>6 ingredients</span>
             <span>Made fresh</span>
           </div>
+          <button className="hero-order-btn" onClick={scrollToOrderSection}>
+            Order now — ₹{PRICE_PER_PACK}/pack
+          </button>
         </header>
 
         <aside className="hero-side">
@@ -367,7 +387,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="order-grid">
+      <section className="order-grid" id="order-section">
         <div className="order-card order-primary">
           <h2>Order your pack</h2>
 
@@ -378,7 +398,15 @@ export default function App() {
 
           <div className="field">
             <label htmlFor="phone">Phone number</label>
-            <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10 digit mobile number" />
+            <input
+              id="phone"
+              value={phone}
+              onChange={handlePhoneChange}
+              placeholder="10 digit mobile number"
+              inputMode="numeric"
+              className={phoneError ? 'input-error' : ''}
+            />
+            {phoneError && <p className="field-error">{phoneError}</p>}
           </div>
           <div className="field">
             <label htmlFor="address">Delivery address</label>
@@ -387,7 +415,15 @@ export default function App() {
 
           <div className="field">
             <label htmlFor="pincode">Pincode</label>
-            <input id="pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="6 digit pincode" />
+            <input
+              id="pincode"
+              value={pincode}
+              onChange={handlePincodeChange}
+              placeholder="6 digit pincode"
+              inputMode="numeric"
+              className={pincodeError ? 'input-error' : ''}
+            />
+            {pincodeError && <p className="field-error">{pincodeError}</p>}
           </div>
 
           <div className="field">
@@ -396,11 +432,11 @@ export default function App() {
               <input
                 id="coupon"
                 value={couponCode}
-                onChange={(e) => { setCouponCode(e.target.value); setCouponStatus(null) }}
+                onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponStatus(null) }}
                 placeholder="e.g. WELCOME10"
                 style={{ flex: 1 }}
               />
-              <button className="qty-btn" style={{ width: 'auto', padding: '0 16px' }} onClick={handleApplyCoupon} disabled={applyingCoupon}>
+              <button className="qty-btn" style={{ width: 'auto', padding: '0 16px' }} onClick={handleApplyCoupon} disabled={applyingCoupon || !couponCode.trim()}>
                 {applyingCoupon ? '...' : 'Apply'}
               </button>
             </div>
@@ -429,7 +465,7 @@ export default function App() {
             <span>Total</span>
             <span className="total-amount">₹{total}</span>
           </div>
-          <button className="cta" onClick={handleOrder} disabled={loading}>
+          <button className="cta" onClick={handleOrder} disabled={loading || belowMinimumAmount}>
             {loading ? 'Starting payment…' : 'Pay and order'}
           </button>
           <p className="note">Secure payment via Razorpay. UPI, cards and netbanking accepted.</p>
@@ -441,9 +477,15 @@ export default function App() {
           <h2>Track your order</h2>
           <div className="field">
             <label htmlFor="trackPhone">Phone number used when ordering</label>
-            <input id="trackPhone" value={trackPhone} onChange={(e) => setTrackPhone(e.target.value)} placeholder="10 digit mobile number" />
+            <input
+              id="trackPhone"
+              value={trackPhone}
+              onChange={handleTrackPhoneChange}
+              placeholder="10 digit mobile number"
+              inputMode="numeric"
+            />
           </div>
-          <button className="cta" onClick={handleTrack} disabled={tracking}>
+          <button className="cta" onClick={handleTrack} disabled={tracking || trackPhone.length !== 10}>
             {tracking ? 'Checking…' : 'Check status'}
           </button>
 
@@ -504,6 +546,21 @@ export default function App() {
 
       <footer>Drynut — made fresh, packed small.</footer>
 
+      {WHATSAPP_SUPPORT_NUMBER && (
+        <a
+          className="whatsapp-fab"
+          href={`https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${encodeURIComponent('Hi Drynut, I need help with my order.')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat with us on WhatsApp"
+        >
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12.004 2.003c-5.514 0-9.997 4.483-9.997 9.997 0 1.762.464 3.484 1.345 5.001L2 22l5.13-1.345a9.96 9.96 0 004.874 1.242h.004c5.514 0 9.997-4.483 9.997-9.997 0-2.671-1.04-5.182-2.929-7.071A9.929 9.929 0 0012.004 2.003zm0 18.164h-.003a8.153 8.153 0 01-4.15-1.137l-.298-.177-3.045.799.813-2.968-.194-.305a8.15 8.15 0 01-1.256-4.372c0-4.51 3.671-8.181 8.185-8.181a8.13 8.13 0 015.79 2.398 8.131 8.131 0 012.396 5.788c0 4.512-3.671 8.155-8.238 8.155z"/>
+          </svg>
+        </a>
+      )}
+
       {showSuccessModal && (
         <div className="success-backdrop" onClick={() => setShowSuccessModal(false)}>
           <div className="success-card" onClick={(e) => e.stopPropagation()}>
@@ -517,6 +574,11 @@ export default function App() {
             <p className="success-sub">
               Your order is confirmed. We're packing your {quantity} pack{quantity > 1 ? 's' : ''} of Drynut now.
             </p>
+            {lastOrderId && (
+              <button className="order-id-chip" onClick={copyOrderId} type="button">
+                Order #{String(lastOrderId).slice(-8)} {copiedOrderId ? '· Copied!' : '· Tap to copy'}
+              </button>
+            )}
             <button className="cta success-close-btn" onClick={() => setShowSuccessModal(false)}>
               Done
             </button>

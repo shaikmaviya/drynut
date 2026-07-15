@@ -3,23 +3,21 @@ import { useState, useEffect, useMemo } from 'react'
 // Same backend used by the storefront.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
-// Statuses your backend should support. Adjust to match your actual order
-// status enum in Spring Boot.
-const STATUSES = ['PENDING', 'PAID', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+// These match your actual OrderEntity.status values exactly.
+// Note: there is no PENDING/CANCELLED status in your backend - every order
+// starts as CONFIRMED, and the separate `paid` boolean tracks whether payment
+// actually went through (shown as a badge below, not as a timeline stage).
+const STATUSES = ['CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED']
 
 const STATUS_LABELS = {
-  PENDING: 'Pending',
-  PAID: 'Paid',
+  CONFIRMED: 'Confirmed',
   PACKED: 'Packed',
   SHIPPED: 'Shipped',
   DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
 }
 
-function formatMoney(amountInPaiseOrRupees) {
-  // Handles either paise (integer, large) or plain rupees depending on your API.
-  const value = amountInPaiseOrRupees > 1000 ? amountInPaiseOrRupees / 100 : amountInPaiseOrRupees
-  return `₹${value.toFixed(0)}`
+function formatMoney(paise) {
+  return `₹${(paise / 100).toFixed(0)}`
 }
 
 function formatDate(iso) {
@@ -47,9 +45,9 @@ export default function AdminDashboard() {
     setLoading(true)
     setLoadError(null)
     try {
-      const res = await fetch(`${API_URL}/api/admin/orders`, {
-        headers: { 'x-admin-key': key },
-      })
+      // Your backend's /api/orders/summary endpoint returns { orders: [...] }
+      // along with some aggregate counts, protected by the `key` query param.
+      const res = await fetch(`${API_URL}/api/orders/summary?key=${encodeURIComponent(key)}`)
       if (res.status === 401 || res.status === 403) {
         setAuthError('Incorrect admin key.')
         localStorage.removeItem('drynut_admin_key')
@@ -58,7 +56,7 @@ export default function AdminDashboard() {
       }
       if (!res.ok) throw new Error('Could not load orders.')
       const data = await res.json()
-      setOrders(Array.isArray(data) ? data : data.orders || [])
+      setOrders(Array.isArray(data.orders) ? data.orders : [])
     } catch (err) {
       setLoadError(err.message || 'Something went wrong loading orders.')
     } finally {
@@ -89,11 +87,16 @@ export default function AdminDashboard() {
     const prev = orders
     setOrders((list) => list.map((o) => (o.orderId === orderId ? { ...o, status: newStatus } : o)))
     try {
-      const res = await fetch(`${API_URL}/api/admin/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
-        body: JSON.stringify({ status: newStatus }),
-      })
+      // Your backend expects the admin key as a `key` query param, not a header,
+      // and the new status in the JSON body.
+      const res = await fetch(
+        `${API_URL}/api/orders/${encodeURIComponent(orderId)}/status?key=${encodeURIComponent(adminKey)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      )
       if (!res.ok) throw new Error('Update failed')
     } catch {
       setOrders(prev) // roll back on failure
@@ -120,13 +123,14 @@ export default function AdminDashboard() {
   }, [orders, search, statusFilter])
 
   const stats = useMemo(() => {
-    const paidOrders = orders.filter((o) => o.status !== 'CANCELLED' && o.status !== 'PENDING')
-    const revenue = paidOrders.reduce((sum, o) => sum + (o.amountInPaise ? o.amountInPaise / 100 : o.amount || 0), 0)
-    const pendingCount = orders.filter((o) => o.status === 'PENDING').length
+    const paidOrders = orders.filter((o) => o.paid)
+    const revenue = paidOrders.reduce((sum, o) => sum + (o.amountInPaise || 0), 0) / 100
+    const unpaidCount = orders.filter((o) => !o.paid).length
     return {
       total: orders.length,
+      paidCount: paidOrders.length,
       revenue,
-      pendingCount,
+      unpaidCount,
       todayCount: orders.filter((o) => {
         const d = new Date(o.createdAt)
         const now = new Date()
@@ -141,7 +145,7 @@ export default function AdminDashboard() {
         <div className="admin-login-card">
           <div className="admin-login-eyebrow">Drynut Admin</div>
           <h1 className="admin-login-title">Sign in to manage orders</h1>
-          <p className="admin-login-sub">Enter the admin key configured on your backend to continue.</p>
+          <p className="admin-login-sub">Enter the admin key configured on your backend (app.admin-key) to continue.</p>
           <input
             type="password"
             value={keyInput}
@@ -175,7 +179,7 @@ export default function AdminDashboard() {
 
       <section className="admin-stats">
         <div className="admin-stat-card">
-          <span className="admin-stat-label">Total orders</span>
+          <span className="admin-stat-label">Total orders started</span>
           <span className="admin-stat-value">{stats.total}</span>
         </div>
         <div className="admin-stat-card admin-stat-accent-mint">
@@ -183,8 +187,8 @@ export default function AdminDashboard() {
           <span className="admin-stat-value">₹{stats.revenue.toFixed(0)}</span>
         </div>
         <div className="admin-stat-card admin-stat-accent-amber">
-          <span className="admin-stat-label">Pending</span>
-          <span className="admin-stat-value">{stats.pendingCount}</span>
+          <span className="admin-stat-label">Unpaid / abandoned</span>
+          <span className="admin-stat-value">{stats.unpaidCount}</span>
         </div>
         <div className="admin-stat-card admin-stat-accent-rose">
           <span className="admin-stat-label">Orders today</span>
@@ -239,6 +243,7 @@ export default function AdminDashboard() {
                   <th>Address</th>
                   <th>Qty</th>
                   <th>Amount</th>
+                  <th>Paid</th>
                   <th>Status</th>
                   <th>Placed</th>
                 </tr>
@@ -255,12 +260,17 @@ export default function AdminDashboard() {
                       {o.address}, {o.pincode}
                     </td>
                     <td>{o.quantity}</td>
-                    <td className="admin-mono">{formatMoney(o.amountInPaise ?? o.amount ?? 0)}</td>
+                    <td className="admin-mono">{formatMoney(o.amountInPaise ?? 0)}</td>
+                    <td>
+                      <span className={`admin-paid-badge ${o.paid ? 'paid' : 'unpaid'}`}>
+                        {o.paid ? 'Paid' : 'Unpaid'}
+                      </span>
+                    </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <select
-                        className={`admin-status-select admin-status-${(o.status || 'pending').toLowerCase()}`}
+                        className={`admin-status-select admin-status-${(o.status || 'confirmed').toLowerCase()}`}
                         value={o.status}
-                        disabled={updatingId === o.orderId}
+                        disabled={updatingId === o.orderId || !o.paid}
                         onChange={(e) => updateStatus(o.orderId, e.target.value)}
                       >
                         {STATUSES.map((s) => (
@@ -284,15 +294,20 @@ export default function AdminDashboard() {
                     <div className="admin-cell-title">{o.customerName}</div>
                     <div className="admin-cell-sub">{o.customerPhone}</div>
                   </div>
-                  <div className="admin-mono">{formatMoney(o.amountInPaise ?? o.amount ?? 0)}</div>
+                  <div className="admin-mono">{formatMoney(o.amountInPaise ?? 0)}</div>
                 </div>
                 <div className="admin-cell-sub admin-address-cell">{o.address}, {o.pincode}</div>
                 <div className="admin-order-card-bottom">
-                  <span className="admin-cell-sub">{o.quantity} pack{o.quantity > 1 ? 's' : ''} · {formatDate(o.createdAt)}</span>
+                  <span className="admin-cell-sub">
+                    {o.quantity} pack{o.quantity > 1 ? 's' : ''} · {formatDate(o.createdAt)} ·{' '}
+                    <span className={`admin-paid-badge ${o.paid ? 'paid' : 'unpaid'}`}>
+                      {o.paid ? 'Paid' : 'Unpaid'}
+                    </span>
+                  </span>
                   <select
-                    className={`admin-status-select admin-status-${(o.status || 'pending').toLowerCase()}`}
+                    className={`admin-status-select admin-status-${(o.status || 'confirmed').toLowerCase()}`}
                     value={o.status}
-                    disabled={updatingId === o.orderId}
+                    disabled={updatingId === o.orderId || !o.paid}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => updateStatus(o.orderId, e.target.value)}
                   >
@@ -320,12 +335,14 @@ export default function AdminDashboard() {
               <dt>Address</dt><dd>{selectedOrder.address}</dd>
               <dt>Pincode</dt><dd>{selectedOrder.pincode}</dd>
               <dt>Quantity</dt><dd>{selectedOrder.quantity} pack(s)</dd>
-              <dt>Amount</dt><dd>{formatMoney(selectedOrder.amountInPaise ?? selectedOrder.amount ?? 0)}</dd>
+              <dt>Original amount</dt><dd>{formatMoney(selectedOrder.originalAmountInPaise ?? 0)}</dd>
+              <dt>Discount</dt><dd>{formatMoney(selectedOrder.discountInPaise ?? 0)}</dd>
+              <dt>Final amount</dt><dd>{formatMoney(selectedOrder.amountInPaise ?? 0)}</dd>
               <dt>Coupon</dt><dd>{selectedOrder.couponCode || '—'}</dd>
+              <dt>Paid</dt><dd>{selectedOrder.paid ? 'Yes' : 'No'}</dd>
               <dt>Status</dt><dd>{STATUS_LABELS[selectedOrder.status] || selectedOrder.status}</dd>
               <dt>Placed</dt><dd>{formatDate(selectedOrder.createdAt)}</dd>
-              <dt>Razorpay order</dt><dd className="admin-mono">{selectedOrder.razorpayOrderId || '—'}</dd>
-              <dt>Razorpay payment</dt><dd className="admin-mono">{selectedOrder.razorpayPaymentId || '—'}</dd>
+              <dt>Razorpay order ID</dt><dd className="admin-mono">{selectedOrder.orderId || '—'}</dd>
             </dl>
           </div>
         </div>
