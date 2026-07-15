@@ -13,10 +13,9 @@ Every completed payment is a real signal — someone paid actual money for the i
 **Backend**
 ```
 cd backend
-$env:RAZORPAY_KEY_ID="rzp_live_TCZ7bkPppI8oNb"
-$env:RAZORPAY_KEY_SECRET="OedbLcH8vKdH6wapScCzREBx"
+
 $env:FRONTEND_URL="http://localhost:5173"
-$env:ADMIN_KEY="mysecret123"
+
 $env:MAIL_USERNAME="officialdrynut@gmail.com"
 $env:MAIL_PASSWORD="toyclcdgtxbogrgn"
 $env:NOTIFY_EMAIL="officialdrynut@gmail.com"
