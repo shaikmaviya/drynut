@@ -6,6 +6,7 @@ import './index.css'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 const PRICE_PER_PACK = 29
+const MRP_PER_PACK = 50
 const INGREDIENTS = ['Dates', 'Cashews', 'Almonds', 'Peanuts', 'Dried figs', 'Pumpkin seeds']
 
 // Set this to your actual WhatsApp support number (with country code, no + or spaces),
@@ -40,6 +41,9 @@ const REVIEWS = [
 // an order that hasn't been paid yet simply never shows up in tracking results).
 const TRACKING_STAGES = ['Confirmed', 'Packed', 'Shipped', 'Delivered']
 
+// Standard delivery window shown to customers, in days from the order date.
+const DELIVERY_DAYS = 6
+
 function getStageIndex(status) {
   switch ((status || '').toUpperCase()) {
     case 'CONFIRMED':
@@ -53,6 +57,15 @@ function getStageIndex(status) {
     default:
       return 0
   }
+}
+
+// Estimates a delivery date DELIVERY_DAYS after the given date (defaults to now).
+// Accepts a Date, a date string/timestamp, or nothing.
+function getEstimatedDeliveryDate(fromDate) {
+  const base = fromDate ? new Date(fromDate) : new Date()
+  const date = new Date(base)
+  date.setDate(date.getDate() + DELIVERY_DAYS)
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const productImageModules = import.meta.glob('./product-images/*.{png,jpg,jpeg,webp,avif}', { eager: true })
@@ -79,6 +92,7 @@ export default function App() {
   const [errorModal, setErrorModal] = useState(null) // string message or null
   const [lastOrderId, setLastOrderId] = useState(null)
   const [copiedOrderId, setCopiedOrderId] = useState(false)
+  const [orderPlacedAt, setOrderPlacedAt] = useState(null)
 
   const subtotal = quantity * PRICE_PER_PACK
   const discountRupees = couponStatus && couponStatus.valid ? couponStatus.discountInPaise / 100 : 0
@@ -184,6 +198,7 @@ export default function App() {
       }
       const order = await res.json()
       setLastOrderId(order.orderId)
+      setOrderPlacedAt(new Date())
 
       const options = {
         key: order.keyId,
@@ -275,7 +290,8 @@ export default function App() {
             <span>Made fresh</span>
           </div>
           <button className="hero-order-btn" onClick={scrollToOrderSection}>
-            Order now — ₹{PRICE_PER_PACK}/pack
+            Order now — <span className="strike">₹{MRP_PER_PACK}</span>
+            ₹{PRICE_PER_PACK}/pack
           </button>
         </header>
 
@@ -339,7 +355,10 @@ export default function App() {
               <span className="spec-label">Ingredients</span>
             </div>
             <div className="spec-cell">
-              <span className="spec-num">₹29</span>
+              <span className="spec-num">
+                <span className="spec-mrp">₹{MRP_PER_PACK}</span>
+                ₹{PRICE_PER_PACK}
+              </span>
               <span className="spec-label">Per pack</span>
             </div>
           </div>
@@ -455,15 +474,28 @@ export default function App() {
             <button className="qty-btn" onClick={() => setQuantity((q) => q + 1)} aria-label="Increase quantity">+</button>
           </div>
 
-          {couponStatus && couponStatus.valid && (
-            <div className="total-row" style={{ borderTop: 'none', paddingTop: 0 }}>
-              <span>Subtotal</span>
-              <span>₹{subtotal}</span>
+          <div className="price-summary">
+            <div className="total-row-plain">
+              <span>MRP ({quantity} × ₹{MRP_PER_PACK})</span>
+              <span className="strike">₹{quantity * MRP_PER_PACK}</span>
             </div>
-          )}
-          <div className="total-row">
-            <span>Total</span>
-            <span className="total-amount">₹{total}</span>
+            {couponStatus && couponStatus.valid && (
+              <div className="total-row-plain">
+                <span>Subtotal</span>
+                <span>₹{subtotal}</span>
+              </div>
+            )}
+            <div className="total-row final">
+              <span>Total</span>
+              <span className="total-amount">₹{total}</span>
+            </div>
+            <p className="savings-note">
+              You save ₹{quantity * MRP_PER_PACK - subtotal} on MRP{discountRupees > 0 ? ` + ₹${discountRupees.toFixed(2)} with coupon` : ''}
+            </p>
+            <div className="total-row-plain">
+              <span>Estimated delivery</span>
+              <span>{getEstimatedDeliveryDate()}</span>
+            </div>
           </div>
           <button className="cta" onClick={handleOrder} disabled={loading || belowMinimumAmount}>
             {loading ? 'Starting payment…' : 'Pay and order'}
@@ -534,6 +566,11 @@ export default function App() {
                             </div>
                           ))}
                         </div>
+                        {stageIndex < TRACKING_STAGES.length - 1 && (
+                          <p className="note" style={{ marginTop: 8 }}>
+                            Estimated delivery by {getEstimatedDeliveryDate(o.createdAt || o.orderDate)}
+                          </p>
+                        )}
                       </>
                     )}
                   </div>
@@ -573,6 +610,9 @@ export default function App() {
             <h2 className="success-title">Thanks for ordering!</h2>
             <p className="success-sub">
               Your order is confirmed. We're packing your {quantity} pack{quantity > 1 ? 's' : ''} of Drynut now.
+            </p>
+            <p className="success-sub" style={{ fontWeight: 600 }}>
+              Estimated delivery by {getEstimatedDeliveryDate(orderPlacedAt)}
             </p>
             {lastOrderId && (
               <button className="order-id-chip" onClick={copyOrderId} type="button">

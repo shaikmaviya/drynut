@@ -285,6 +285,15 @@ h1 {
   display: block;
 }
 
+.spec-mrp {
+  text-decoration: line-through;
+  opacity: 0.55;
+  font-size: 0.5em;
+  margin-right: 5px;
+  font-family: var(--body);
+  display: inline-block;
+}
+
 .spec-label {
   font-size: 11px;
   color: var(--cream-dim);
@@ -445,20 +454,54 @@ h1 {
   touch-action: manipulation;
 }
 
+/* Price summary block: MRP line, subtotal, total, savings note and delivery
+   estimate all live together here, spaced consistently as one group. */
+.price-summary {
+  margin: 18px 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
 .total-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin: 18px 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  margin: 0 0 6px;
   gap: 10px;
+}
+
+/* Compact secondary line inside the price summary (MRP, subtotal, delivery estimate) */
+.total-row-plain {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 6px;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--cream-dim);
+}
+
+.total-row-plain .strike {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.total-row.final {
+  margin: 10px 0 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
 }
 
 .total-amount {
   font-family: var(--display);
   font-size: 26px;
   color: var(--sand);
+}
+
+.savings-note {
+  font-size: 13px;
+  color: var(--amber);
+  margin: 0 0 4px;
 }
 
 .cta {
@@ -474,6 +517,7 @@ h1 {
   cursor: pointer;
   font-family: var(--body);
   touch-action: manipulation;
+  margin-top: 16px;
 }
 .cta:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -745,7 +789,8 @@ footer {
     padding: 14px 16px;
   }
 
-  .total-row {
+  .total-row,
+  .total-row-plain {
     flex-wrap: wrap;
   }
 
@@ -1093,6 +1138,12 @@ footer {
   cursor: pointer;
   font-family: var(--body);
   display: inline-block;
+}
+
+.hero-order-btn .strike {
+  text-decoration: line-through;
+  opacity: 0.65;
+  margin-right: 6px;
 }
 
 .field-error {
