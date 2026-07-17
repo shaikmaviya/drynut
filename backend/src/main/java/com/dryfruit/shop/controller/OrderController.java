@@ -37,7 +37,7 @@ public class OrderController {
     private final CouponService couponService;
     private final EmailService emailService;
 
-    private static final int PRICE_PER_PACK_RUPEES = 29;
+    private static final int PRICE_PER_PACK_RUPEES = 39;
     private static final Set<String> VALID_STATUSES = Set.of("CONFIRMED", "PACKED", "SHIPPED", "DELIVERED");
 
     @Value("${app.admin-key:changeme}")
