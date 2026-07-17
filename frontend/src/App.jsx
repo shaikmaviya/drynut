@@ -5,7 +5,7 @@ import './index.css'
 // For local dev, keep the Spring Boot server running on port 8080.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
-const PRICE_PER_PACK = 29
+const PRICE_PER_PACK = 39
 const MRP_PER_PACK = 50
 const INGREDIENTS = ['Dates', 'Cashews', 'Almonds', 'Peanuts', 'Dried figs', 'Pumpkin seeds']
 
