@@ -17,7 +17,7 @@ import java.util.Set;
 @RequestMapping("/api/coupons")
 public class CouponController {
 
-    private static final int PRICE_PER_PACK_RUPEES = 29;
+    private static final int PRICE_PER_PACK_RUPEES = 39;
     private static final Set<String> VALID_TYPES = Set.of("PERCENT", "FLAT");
 
     private final CouponRepository couponRepository;
